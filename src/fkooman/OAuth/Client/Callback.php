@@ -27,6 +27,7 @@ class Callback
     private $clientConfig;
     private $tokenStorage;
     private $httpClient;
+	private $tokenResponse;
 
     public function __construct(
         $clientConfigId,
@@ -85,7 +86,7 @@ class Callback
 
     public function handleCallback(array $query)
     {
-        $queryState = isset($query['state']) ? $query['state'] : null;
+		$queryState = isset($query['state']) ? $query['state'] : null;
         $queryCode = isset($query['code']) ? $query['code'] : null;
         $queryError = isset($query['error']) ? $query['error'] : null;
         $queryErrorDescription = isset($query['error_description']) ? $query['error_description'] : null;
@@ -120,6 +121,7 @@ class Callback
                 throw new CallbackException('unable to fetch access token with authorization code');
             }
 
+			$this->tokenResponse = $tokenResponse;
             if (null === $tokenResponse->getScope()) {
                 // no scope in response, we assume we got the initially requested scope
                 $scope = $state->getScope();
@@ -167,4 +169,8 @@ class Callback
             return $accessToken;
         }
     }
+
+	function getTokenResponse() {
+		return $this->tokenResponse;
+	}
 }
