@@ -17,9 +17,14 @@ BuildArch:  noarch
 
 Provides:   php-composer(%{composer_vendor}/%{composer_project}) = %{version}
 
-Requires:   php >= 5.3.3
+Requires:   php >= 5.3.0
 
+Requires:   php-date
+Requires:   php-filter
+Requires:   php-json
 Requires:   php-openssl
+Requires:   php-pcre
+Requires:   php-session
 Requires:   php-pdo
 
 Requires:   php-composer(fkooman/oauth-common) >= 0.5.0

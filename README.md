@@ -45,9 +45,6 @@ to access data at the resource server without the session data being available.
 A more robust implementation would use the PDO backed storage. For testing 
 purposes or very simple setups the session implementation makes the most sense.
 
-For accessing the resource service a Guzzle plugin is available that will help
-you with that.
-
 The sections below will walk through all the steps you need in order to get the
 client working.
 
@@ -59,18 +56,15 @@ to this a `composer.json` is included for use with Composer.
 
 ## Composer
 In order to easily integrate with your application it is recommended to use
-Composer to install the dependencies. You need to install two libraries to 
-use this library: 
+Composer to install the dependencies.
 
-* `fkooman/php-oauth-client`
-* `fkooman/guzzle-bearer-auth-plugin`
+* `fkooman/oauth-client`
 
 Below is a simple example `composer.json` file you could use:
 
     {
         "name": "fkooman/my-demo-oauth-app",
         "require": {
-            "fkooman/guzzle-bearer-auth-plugin": "dev-master",
             "fkooman/php-oauth-client": "dev-master"
         }
     }
@@ -132,17 +126,18 @@ violating services are:
 
 ## Initializing the API
 Now you can initialize the `Api` object:
-
-    $api = new Api("foo", $clientConfig, new SessionStorage(), new \Guzzle\Http\Client());
+    
+    $api = new Api("foo", $clientConfig, new SessionStorage(), new Guzzle3Client());
     
 In this example we use the `SessionStorage` token storage backend. This is used 
 to keep the obtained tokens in the user session. For testing purposes this is 
 sufficient, for production deployments you will want to use the `PdoStorage` 
 backend instead, see below.
 
-You also need to provide an instance of Guzzle which is a HTTP client used to 
-exchange authorization codes for access tokens, or use a refresh token to 
-obtain a new access token.
+You also need to provide an instance of Guzzle, or in this case the 
+`Guzzle3Client` which is a HTTP client used to exchange authorization codes 
+for access tokens, or use a refresh token to obtain a new access token. There 
+is also a `Guzzle6Client` available if your application already uses Guzzle 6.
 
 ## Requesting Tokens
 In order to request tokens you need to use two methods: `Api::getAccessToken()` 
@@ -198,37 +193,17 @@ next section below.
 
 Assuming you already had an access token, i.e.: the response from 
 `Api::getAccessToken()` was not `false` you can now try to get the resource. 
-This example uses Guzzle as well:
+You can usually request the resource by setting the `Authorization` header,
+like this: `Authorization: Bearer access_token` where `access_token` is the
+value of `Api::getAccessToken()`.
 
-    $apiUrl = 'http://www.example.org/resource';
+If the request fails with a `401` it means something was wrong with the token. 
+It possibly expired or was revoked. You can remove the currently stored 
+access token and try again:
+
+    $api->deleteAccessToken($context);
+    $api->deleteRefreshToken($context);
     
-    try {
-        $client = new Client();
-        $bearerAuth = new BearerAuth($accessToken->getAccessToken());
-        $client->addSubscriber($bearerAuth);
-        $response = $client->get($apiUrl)->send();
-
-        header("Content-Type: application/json");
-        echo $response->getBody();
-    } catch (BearerErrorResponseException $e) {
-        if ("invalid_token" === $e->getBearerReason()) {
-            // the token we used was invalid, possibly revoked, we throw it away
-            $api->deleteAccessToken($context);
-            $api->deleteRefreshToken($context);
-
-            /* no valid access token available, go to authorization server */
-            header("HTTP/1.1 302 Found");
-            header("Location: " . $api->getAuthorizeUri($context));
-            exit;
-        }
-        throw $e;
-    }
-    
-Pay special attention to the `BearerErrorResponseException` where both the 
-access token and refresh token are deleted when the access token does not work.
-If that happens, the browser is redirected like in the case when there was no
-token yet.
-
 ## Handling the Callback
 The above situation assumed you already had a valid access token. If you didn't
 you got redirected to the authorization server where you had to accept the 
@@ -240,7 +215,7 @@ also create the `ClientConfig` object here, like in the `Api` case. The
 contents of this file are assumed to be in `callback.php`.
 
     try {
-        $cb = new Callback("foo", $clientConfig, new SessionStorage(), new \Guzzle\Http\Client());
+        $cb = new Callback("foo", $clientConfig, new SessionStorage(), new Guzzle3Client());
         $cb->handleCallback($_GET);
 
         header("HTTP/1.1 302 Found");
@@ -301,7 +276,7 @@ own logging framework, set the appropriate log level, e.g. only log on errors.
 
 So instead of just using
 
-    new Client()
+    new Guzzle3Client()
 
 You can use the following snippet:
 
@@ -320,8 +295,10 @@ You can use the following snippet:
     $httpClient = new Client();
     $httpClient->addSubscriber($logPlugin);
 
-Now you can feed the `$httpClient` to the `Api` and `Callback` classes and the
-requests and responses including their bodies will be logged.
+    $guzzle3Client = new Guzzle3Client($httpClient);
+
+Now you can feed the `$guzzle3Client` to the `Api` and `Callback` classes and
+the requests and responses including their bodies will be logged.
 
 # Tests
 In order to run the tests you can use [PHPUnit](http://phpunit.de). You can run 

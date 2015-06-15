@@ -4,7 +4,7 @@ use fkooman\OAuth\Client\GoogleClientConfig;
 use fkooman\OAuth\Client\Callback;
 use fkooman\OAuth\Client\SessionStorage;
 use fkooman\OAuth\Client\PdoStorage;
-use Guzzle\Http\Client;
+use fkooman\OAuth\Client\Guzzle3Client;
 
 require_once 'vendor/autoload.php';
 
@@ -17,7 +17,7 @@ try {
     $tokenStorage = new SessionStorage();
 
     /* initialize the Callback */
-    $cb = new Callback('php-drive-client', $clientConfig, $tokenStorage, new Client());
+    $cb = new Callback('php-drive-client', $clientConfig, $tokenStorage, new Guzzle3Client());
     /* handle the callback */
     $cb->handleCallback($_GET);
 

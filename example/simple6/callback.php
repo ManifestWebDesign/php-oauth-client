@@ -2,7 +2,7 @@
 
 require_once 'vendor/autoload.php';
 
-use fkooman\OAuth\Client\Guzzle3Client;
+use fkooman\OAuth\Client\Guzzle6Client;
 use fkooman\OAuth\Client\ClientConfig;
 use fkooman\OAuth\Client\SessionStorage;
 use fkooman\OAuth\Client\Callback;
@@ -10,7 +10,7 @@ use fkooman\OAuth\Client\Callback;
 $clientConfig = new ClientConfig(
     array(
         'authorize_endpoint' => 'http://localhost/php-oauth-as/authorize.php',
-        'client_id' => 'php-oauth-client-example',
+        'client_id' => 'php-oauth-client-example6',
         'client_secret' => 'f00b4r',
         'token_endpoint' => 'http://localhost/php-oauth-as/token.php',
     )
@@ -18,13 +18,13 @@ $clientConfig = new ClientConfig(
 
 try {
     $tokenStorage = new SessionStorage();
-    $httpClient = new Guzzle3Client();
+    $httpClient = new Guzzle6Client();
 
     $cb = new Callback('foo', $clientConfig, $tokenStorage, $httpClient);
     $cb->handleCallback($_GET);
 
     header('HTTP/1.1 302 Found');
-    header('Location: http://localhost/fkooman/php-oauth-client/example/simple/index.php');
+    header('Location: http://localhost/fkooman/php-oauth-client/example/simple6/index.php');
     exit;
 } catch (fkooman\OAuth\Client\Exception\AuthorizeException $e) {
     // this exception is thrown by Callback when the OAuth server returns a

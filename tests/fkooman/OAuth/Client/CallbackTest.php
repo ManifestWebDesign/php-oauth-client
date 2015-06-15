@@ -79,8 +79,9 @@ class CallbackTest extends \PHPUnit_Framework_TestCase
             )
         );
         $this->storage->storeState($state);
+        $guzzle3Client = new Guzzle3Client($client);
 
-        $callback = new Callback('foo', $this->clientConfig[0], $this->storage, $client);
+        $callback = new Callback('foo', $this->clientConfig[0], $this->storage, $guzzle3Client);
 
         $tokenResponse = $callback->handleCallback(
             array(

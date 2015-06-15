@@ -131,7 +131,9 @@ class TokenRequestTest extends \PHPUnit_Framework_TestCase
         $history = new HistoryPlugin();
         $history->setLimit(5);
         $client->addSubscriber($history);
-        $tokenRequest = new TokenRequest($client, $this->clientConfig[0]);
+
+        $guzzle3Client = new Guzzle3Client($client);
+        $tokenRequest = new TokenRequest($guzzle3Client, $this->clientConfig[0]);
         $tokenRequest->withAuthorizationCode('12345');
         $lastRequest = $history->getLastRequest();
         $this->assertEquals('POST', $lastRequest->getMethod());
@@ -152,7 +154,8 @@ class TokenRequestTest extends \PHPUnit_Framework_TestCase
         $history = new HistoryPlugin();
         $history->setLimit(5);
         $client->addSubscriber($history);
-        $tokenRequest = new TokenRequest($client, $this->clientConfig[1]);
+        $guzzle3Client = new Guzzle3Client($client);
+        $tokenRequest = new TokenRequest($guzzle3Client, $this->clientConfig[1]);
         $tokenRequest->withAuthorizationCode('12345');
         $lastRequest = $history->getLastRequest();
         $this->assertEquals('POST', $lastRequest->getMethod());
@@ -175,7 +178,8 @@ class TokenRequestTest extends \PHPUnit_Framework_TestCase
         $history = new HistoryPlugin();
         $history->setLimit(5);
         $client->addSubscriber($history);
-        $tokenRequest = new TokenRequest($client, $this->clientConfig[2]);
+        $guzzle3Client = new Guzzle3Client($client);
+        $tokenRequest = new TokenRequest($guzzle3Client, $this->clientConfig[2]);
         $tokenResponse = $tokenRequest->withAuthorizationCode('12345');
         $this->assertEquals(1200, $tokenResponse->getExpiresIn());
     }
@@ -189,7 +193,8 @@ class TokenRequestTest extends \PHPUnit_Framework_TestCase
         $history = new HistoryPlugin();
         $history->setLimit(5);
         $client->addSubscriber($history);
-        $tokenRequest = new TokenRequest($client, $this->clientConfig[3]);
+        $guzzle3Client = new Guzzle3Client($client);
+        $tokenRequest = new TokenRequest($guzzle3Client, $this->clientConfig[3]);
         $tokenResponse = $tokenRequest->withAuthorizationCode('12345');
         $this->assertTrue($tokenResponse->getScope()->equals(Scope::fromString('foo bar')));
     }
@@ -203,7 +208,8 @@ class TokenRequestTest extends \PHPUnit_Framework_TestCase
         $history = new HistoryPlugin();
         $history->setLimit(5);
         $client->addSubscriber($history);
-        $tokenRequest = new TokenRequest($client, $this->clientConfig[4]);
+        $guzzle3Client = new Guzzle3Client($client);
+        $tokenRequest = new TokenRequest($guzzle3Client, $this->clientConfig[4]);
         $tokenResponse = $tokenRequest->withAuthorizationCode('12345');
         $this->assertTrue($tokenResponse->getScope()->equals(Scope::fromString('foo bar')));
     }
@@ -217,7 +223,8 @@ class TokenRequestTest extends \PHPUnit_Framework_TestCase
         $history = new HistoryPlugin();
         $history->setLimit(5);
         $client->addSubscriber($history);
-        $tokenRequest = new TokenRequest($client, $this->clientConfig[0]);
+        $guzzle3Client = new Guzzle3Client($client);
+        $tokenRequest = new TokenRequest($guzzle3Client, $this->clientConfig[0]);
         $tokenRequest->withRefreshToken('refresh_123_456');
         $lastRequest = $history->getLastRequest();
         $this->assertEquals('POST', $lastRequest->getMethod());
@@ -241,7 +248,8 @@ class TokenRequestTest extends \PHPUnit_Framework_TestCase
         $history = new HistoryPlugin();
         $history->setLimit(5);
         $client->addSubscriber($history);
-        $tokenRequest = new TokenRequest($client, $this->clientConfig[0]);
+        $guzzle3Client = new Guzzle3Client($client);
+        $tokenRequest = new TokenRequest($guzzle3Client, $this->clientConfig[0]);
         $this->assertFalse($tokenRequest->withRefreshToken('refresh_123_456'));
     }
 }

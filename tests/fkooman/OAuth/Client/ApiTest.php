@@ -59,8 +59,9 @@ class ApiTest extends \PHPUnit_Framework_TestCase
         $mock = new MockPlugin();
         $mock->addResponse(new Response(200));
         $client->addSubscriber($mock);
+        $guzzle3Client = new Guzzle3Client($client);
 
-        $api = new Api('foo', $this->clientConfig[0], $this->storage, $client);
+        $api = new Api('foo', $this->clientConfig[0], $this->storage, $guzzle3Client);
         $context = new Context('a_user', array('foo', 'bar'));
 
         $this->assertFalse($api->getAccessToken($context));
@@ -73,8 +74,8 @@ class ApiTest extends \PHPUnit_Framework_TestCase
         $mock = new MockPlugin();
         $mock->addResponse(new Response(200));
         $client->addSubscriber($mock);
-
-        $api = new Api('foo', $this->clientConfig[0], $this->storage, $client);
+        $guzzle3Client = new Guzzle3Client($client);
+        $api = new Api('foo', $this->clientConfig[0], $this->storage, $guzzle3Client);
         $context = new Context('a_user', array('foo', 'bar'));
 
         $accessToken = new AccessToken(
@@ -111,8 +112,9 @@ class ApiTest extends \PHPUnit_Framework_TestCase
             )
         );
         $client->addSubscriber($mock);
+        $guzzle3Client = new Guzzle3Client($client);
 
-        $api = new Api('foo', $this->clientConfig[0], $this->storage, $client);
+        $api = new Api('foo', $this->clientConfig[0], $this->storage, $guzzle3Client);
         $context = new Context('a_user', array('foo', 'bar'));
 
         $accessToken = new AccessToken(

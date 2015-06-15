@@ -5,9 +5,9 @@ use fkooman\OAuth\Client\Context;
 use fkooman\OAuth\Client\GoogleClientConfig;
 use fkooman\OAuth\Client\SessionStorage;
 use fkooman\OAuth\Client\PdoStorage;
+use fkooman\OAuth\Client\Guzzle3Client;
 use Guzzle\Http\Client;
-use fkooman\Guzzle\Plugin\BearerAuth\BearerAuth;
-use fkooman\Guzzle\Plugin\BearerAuth\Exception\BearerErrorResponseException;
+use Guzzle\Http\Exception\ClientErrorResponseException;
 
 require_once 'vendor/autoload.php';
 
@@ -19,7 +19,7 @@ try {
     //$tokenStorage = new PdoStorage($db);
     $tokenStorage = new SessionStorage();
 
-    $api = new Api('php-drive-client', $clientConfig, $tokenStorage, new Client());
+    $api = new Api('php-drive-client', $clientConfig, $tokenStorage, new Guzzle3Client());
     $context = new Context('john.doe@example.org', array('https://www.googleapis.com/auth/drive.readonly'));
 
     /* the protected endpoint uri */
@@ -37,20 +37,16 @@ try {
     /* we have an access token */
     try {
         $client = new Client();
-        $bearerAuth = new BearerAuth($accessToken->getAccessToken());
-        $client->addSubscriber($bearerAuth);
-        $response = $client->get($apiUri)->send();
+        $request = $client->post($url);
+        $request->addHeader('Authorization', sprintf('Bearer %s', $accessToken->getAccessToken()));
 
+        $response = $request->send();
         header('Content-Type: application/json');
         echo $response->getBody();
-    } catch (BearerErrorResponseException $e) {
-        if ('invalid_token' === $e->getBearerReason()) {
+    } catch (ClientErrorResponseException $e) {
+        if (401 === $e->getResponse()->getStatusCode()) {
             /* no valid access token available just yet, go to authorization server */
             $api->deleteAccessToken($context);
-
-            // Google does not support refresh tokens...
-            // $api->deleteRefreshToken($context);
-
             header('HTTP/1.1 302 Found');
             header('Location: '.$api->getAuthorizeUri($context));
             exit;

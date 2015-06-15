@@ -16,17 +16,19 @@
  */
 namespace fkooman\OAuth\Client;
 
+use RuntimeException;
+
 class TokenRequest
 {
-    /** @var \Guzzle\Http\Client */
-    private $c;
+    /** @var fkooman\OAuth\Client\HttpClientInterface */
+    private $httpClient;
 
     /** @var \fkooman\OAuth\Client\ClientConfigInterface */
     private $clientConfig;
 
-    public function __construct(\Guzzle\Http\Client $c, ClientConfigInterface $clientConfig)
+    public function __construct(HttpClientInterface $httpClient, ClientConfigInterface $clientConfig)
     {
-        $this->c = $c;
+        $this->httpClient = $httpClient;
         $this->clientConfig = $clientConfig;
     }
 
@@ -69,19 +71,13 @@ class TokenRequest
             $p['client_secret'] = $this->clientConfig->getClientSecret();
         } else {
             // use basic authentication
-            $curlAuth = new \Guzzle\Plugin\CurlAuth\CurlAuthPlugin(
-                $this->clientConfig->getClientId(),
-                $this->clientConfig->getClientSecret()
-            );
-            $this->c->addSubscriber($curlAuth);
+            $this->httpClient->setBasicAuth($this->clientConfig->getClientId(), $this->clientConfig->getClientSecret());
         }
 
         try {
-            $request = $this->c->post($this->clientConfig->getTokenEndpoint());
-            $request->addPostFields($p);
-            $request->addHeader('Accept', 'application/json');
-
-            $responseData = $request->send()->json();
+            $this->httpClient->addHeader('Accept', 'application/json');
+            $this->httpClient->addPostFields($p);
+            $responseData = $this->httpClient->post($this->clientConfig->getTokenEndpoint());
 
             // some servers do not provide token_type, so we allow for setting
             // a default
@@ -136,7 +132,7 @@ class TokenRequest
             }
 
             return new TokenResponse($responseData);
-        } catch (\Guzzle\Common\Exception\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             return false;
         }
     }

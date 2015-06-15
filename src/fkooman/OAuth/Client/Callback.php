@@ -19,13 +19,14 @@ namespace fkooman\OAuth\Client;
 use fkooman\OAuth\Client\Exception\CallbackException;
 // FIXME: replace AuthorizeException with CallbackException?
 use fkooman\OAuth\Client\Exception\AuthorizeException;
-use Guzzle\Http\Client;
 
 class Callback
 {
     private $clientConfigId;
     private $clientConfig;
     private $tokenStorage;
+
+    /** @var fkooman\OAuth\Client\HttpClientInterface */
     private $httpClient;
 	private $tokenResponse;
 
@@ -33,7 +34,7 @@ class Callback
         $clientConfigId,
         ClientConfigInterface $clientConfig,
         StorageInterface $tokenStorage,
-        Client $httpClient
+        HttpClientInterface $httpClient
     ) {
         $this->setClientConfigId($clientConfigId);
         $this->setClientConfig($clientConfig);
@@ -74,7 +75,7 @@ class Callback
         return $this->tokenStorage;
     }
 
-    public function setHttpClient(Client $httpClient)
+    public function setHttpClient(HttpClientInterface $httpClient)
     {
         $this->httpClient = $httpClient;
     }
