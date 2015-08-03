@@ -75,7 +75,7 @@ class Api
     {
         // do we have a valid access token?
         $accessToken = $this->tokenStorage->getAccessToken($this->clientConfigId, $context);
-		$invalid_token = false;
+		$invalid_token = true;
 
         if (false !== $accessToken) {
             if (null === $accessToken->getExpiresIn()) {
@@ -89,7 +89,6 @@ class Api
             }
             // expired, delete it and continue
             $this->tokenStorage->deleteAccessToken($accessToken);
-			$invalid_token = true;
         }
 
         // no valid access token, is there a refresh_token?
@@ -102,11 +101,11 @@ class Api
 			$tokenRequest = new TokenRequest($this->httpClient, $this->clientConfig);
 			$tokenResponse = $tokenRequest->withRefreshToken($refreshToken->getRefreshToken());
 
-			if (false === $tokenResponse) {
+			if (false !== $tokenResponse) {
 				// unable to fetch with RefreshToken, delete it
 				$this->tokenStorage->deleteRefreshToken($refreshToken);
-				$invalid_token = true;
-				//return false;
+			}else {
+				$invalid_token = false;
 			}
 		}
 
