@@ -21,34 +21,34 @@ class InvalidTokenException extends \Exception {
 	/**
 	 * @var	string
 	 */
-	protected $clientConfigId;
+	protected $userId;
 
 	/**
 	 *
 	 * @param	string		$message				optional.
 	 * @param	string		$code					optional.
 	 * @param	string		$previous				optional.
-	 * @param	string		$client_config_id		optional.
+	 * @param	string		$user_id		optional.
 	 * @return	\fkooman\OAuth\Client\Exception\InvalidTokenException
 	 */
-	function __construct($message, $code, $previous, $client_config_id = null) {
+	function __construct($message, $code, $previous, $user_id = null) {
 		parent::__construct($message, $code, $previous);
-		$this->clientConfigId = $client_config_id;
+		$this->userId = $user_id;
 	}
 
 	/**
 	 * @return	string
 	 */
-	function getClientConfigId() {
-		return $this->clientConfigId;
+	function getUserId() {
+		return $this->userId;
 	}
 
 	/**
-	 * @param	string		$client_config_id
+	 * @param	string		$user_id
 	 * @return	\fkooman\OAuth\Client\Exception\InvalidTokenException
 	 */
-	function setClientConfigId($client_config_id) {
-		$this->clientConfigId = $client_config_id;
+	function setUserId($user_id) {
+		$this->userId = $user_id;
 		return $this;
 	}
 }

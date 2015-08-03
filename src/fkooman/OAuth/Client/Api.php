@@ -88,7 +88,7 @@ class Api
                 return $accessToken;
             }
             // expired, delete it and continue
-            //$this->tokenStorage->deleteAccessToken($accessToken);
+            $this->tokenStorage->deleteAccessToken($accessToken);
 			$invalid_token = true;
         }
 
@@ -104,7 +104,7 @@ class Api
 
 			if (false === $tokenResponse) {
 				// unable to fetch with RefreshToken, delete it
-				//$this->tokenStorage->deleteRefreshToken($refreshToken);
+				$this->tokenStorage->deleteRefreshToken($refreshToken);
 				$invalid_token = true;
 				//return false;
 			}
@@ -112,7 +112,7 @@ class Api
 
 		if ($invalid_token === true) {
 			$e = new InvalidTokenException(
-				'Token for client # "' . $context->getUserId() . '" is invalid or expired.',
+				'Token for user # "' . $context->getUserId() . '" is invalid or expired.',
 				null,
 				null,
 				$context->getUserId()
