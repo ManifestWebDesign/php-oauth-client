@@ -17,6 +17,7 @@
 namespace fkooman\OAuth\Client;
 
 use fkooman\OAuth\Client\Exception\ApiException;
+use fkooman\OAuth\Client\Exception\InvalidTokenException;
 
 /**
  * API for talking to OAuth 2.0 protected resources.
@@ -74,6 +75,8 @@ class Api
     {
         // do we have a valid access token?
         $accessToken = $this->tokenStorage->getAccessToken($this->clientConfigId, $context);
+		$invalid_token = false;
+
         if (false !== $accessToken) {
             if (null === $accessToken->getExpiresIn()) {
                 // no expiry set, assume always valid
@@ -85,68 +88,85 @@ class Api
                 return $accessToken;
             }
             // expired, delete it and continue
-            $this->tokenStorage->deleteAccessToken($accessToken);
+            //$this->tokenStorage->deleteAccessToken($accessToken);
+			$invalid_token = true;
         }
 
         // no valid access token, is there a refresh_token?
         $refreshToken = $this->getRefreshToken($context);
-        if (false !== $refreshToken) {
-            // obtain a new access token with refresh token
-            $tokenRequest = new TokenRequest($this->httpClient, $this->clientConfig);
-            $tokenResponse = $tokenRequest->withRefreshToken($refreshToken->getRefreshToken());
-            if (false === $tokenResponse) {
-                // unable to fetch with RefreshToken, delete it
-                $this->tokenStorage->deleteRefreshToken($refreshToken);
-
-                return false;
-            }
-
-            if (null === $tokenResponse->getScope()) {
-                // no scope in response, we assume we got the requested scope
-                $scope = $context->getScope();
-            } else {
-                // the scope we got should be a superset of what we requested
-                $scope = $tokenResponse->getScope();
-                if (!$scope->hasScope($context->getScope())) {
-                    // we didn't get the scope we requested, stop for now
-                    // FIXME: we need to implement a way to request certain
-                    // scope as being optional, while others need to be
-                    // required
-                    throw new ApiException('requested scope not obtained');
-                }
-            }
-
-            $accessToken = new AccessToken(
-                array(
-                    'client_config_id' => $this->clientConfigId,
-                    'user_id' => $context->getUserId(),
-                    'scope' => $scope,
-                    'access_token' => $tokenResponse->getAccessToken(),
-                    'token_type' => $tokenResponse->getTokenType(),
-                    'issue_time' => time(),
-                    'expires_in' => $tokenResponse->getExpiresIn(),
-                )
-            );
-            $this->tokenStorage->storeAccessToken($accessToken);
-            if (null !== $tokenResponse->getRefreshToken()) {
-                // delete the existing refresh token as we'll store a new one
-                $this->tokenStorage->deleteRefreshToken($refreshToken);
-                $refreshToken = new RefreshToken(
-                    array(
-                        'client_config_id' => $this->clientConfigId,
-                        'user_id' => $context->getUserId(),
-                        'scope' => $scope,
-                        'refresh_token' => $tokenResponse->getRefreshToken(),
-                        'issue_time' => time(),
-                    )
-                );
-                $this->tokenStorage->storeRefreshToken($refreshToken);
-            }
-
-            return $accessToken;
-        }
         // no access token, and refresh token didn't work either or was not there, probably the tokens were revoked
-        return false;
+        //return false;
+
+		if ($refreshToken !== false) {
+			// obtain a new access token with refresh token
+			$tokenRequest = new TokenRequest($this->httpClient, $this->clientConfig);
+			$tokenResponse = $tokenRequest->withRefreshToken($refreshToken->getRefreshToken());
+
+			if (false === $tokenResponse) {
+				// unable to fetch with RefreshToken, delete it
+				//$this->tokenStorage->deleteRefreshToken($refreshToken);
+				$invalid_token = true;
+				//return false;
+			}
+		}
+
+		if ($invalid_token === true) {
+			$e = new InvalidTokenException(
+				'Token for client # "' . $context->getUserId() . '" is invalid or expired.',
+				null,
+				null,
+				$context->getUserId()
+			);
+
+			throw $e;
+		}
+
+		if (null === $tokenResponse->getScope()) {
+			// no scope in response, we assume we got the requested scope
+			$scope = $context->getScope();
+
+		} else {
+			// the scope we got should be a superset of what we requested
+			$scope = $tokenResponse->getScope();
+			if (!$scope->hasScope($context->getScope())) {
+				// we didn't get the scope we requested, stop for now
+				// FIXME: we need to implement a way to request certain
+				// scope as being optional, while others need to be
+				// required
+				throw new ApiException('requested scope not obtained');
+			}
+		}
+
+		$accessToken = new AccessToken(
+			array(
+				'client_config_id' => $this->clientConfigId,
+				'user_id' => $context->getUserId(),
+				'scope' => $scope,
+				'access_token' => $tokenResponse->getAccessToken(),
+				'token_type' => $tokenResponse->getTokenType(),
+				'issue_time' => time(),
+				'expires_in' => $tokenResponse->getExpiresIn(),
+			)
+		);
+
+		$this->tokenStorage->storeAccessToken($accessToken);
+
+		if (null !== $tokenResponse->getRefreshToken()) {
+			// delete the existing refresh token as we'll store a new one
+			$this->tokenStorage->deleteRefreshToken($refreshToken);
+			$refreshToken = new RefreshToken(
+				array(
+					'client_config_id' => $this->clientConfigId,
+					'user_id' => $context->getUserId(),
+					'scope' => $scope,
+					'refresh_token' => $tokenResponse->getRefreshToken(),
+					'issue_time' => time(),
+				)
+			);
+			$this->tokenStorage->storeRefreshToken($refreshToken);
+		}
+
+		return $accessToken;
     }
 
     public function deleteAccessToken(Context $context)
