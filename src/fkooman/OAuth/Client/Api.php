@@ -70,6 +70,7 @@ class Api {
 		// do we have a valid access token?
 		$accessToken = $this->tokenStorage->getAccessToken($this->clientConfigId, $context);
 		$invalid_token = false;
+		$scope = null;
 
 		if (false !== $accessToken) {
 			if (null === $accessToken->getExpiresIn()) {
@@ -96,7 +97,7 @@ class Api {
 			$tokenRequest = new TokenRequest($this->httpClient, $this->clientConfig);
 			$tokenResponse = $tokenRequest->withRefreshToken($refreshToken->getRefreshToken());
 
-			if (false !== $tokenResponse) {
+			if (function_exists('getScope', $tokenResponse)) {
 				$invalid_token = false;
 			} else {
 				//$this->tokenStorage->deleteRefreshToken($refreshToken);
@@ -127,7 +128,7 @@ class Api {
 			}
 		}
 
-		if ($invalid_token === true) {
+		if ($invalid_token === true || $scope === null) {
 			$e = new InvalidTokenException(
 				'Token for user # "' . $context->getUserId() . '" is invalid or expired.', null, null, $context->getUserId()
 			);
