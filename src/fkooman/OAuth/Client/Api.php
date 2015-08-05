@@ -14,6 +14,7 @@
  *  You should have received a copy of the GNU Lesser General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 namespace fkooman\OAuth\Client;
 
 use fkooman\OAuth\Client\Exception\ApiException;
@@ -24,77 +25,71 @@ use fkooman\OAuth\Client\Exception\InvalidTokenException;
  *
  * @author François Kooman <fkooman@tuxed.net>
  */
-class Api
-{
-    const RANDOM_LENGTH = 8;
+class Api {
 
-    private $clientConfigId;
-    private $clientConfig;
-    private $tokenStorage;
+	const RANDOM_LENGTH = 8;
 
-    /** @var fkooman/OAuth/Client/HttpClientInterface */
-    private $httpClient;
+	private $clientConfigId;
+	private $clientConfig;
+	private $tokenStorage;
 
-    public function __construct($clientConfigId, ClientConfigInterface $clientConfig, StorageInterface $tokenStorage, HttpClientInterface $httpClient)
-    {
-        $this->setClientConfigId($clientConfigId);
-        $this->setClientConfig($clientConfig);
-        $this->setTokenStorage($tokenStorage);
-        $this->setHttpClient($httpClient);
-    }
+	/** @var fkooman/OAuth/Client/HttpClientInterface */
+	private $httpClient;
 
-    public function setClientConfigId($clientConfigId)
-    {
-        if (!is_string($clientConfigId) || 0 >= strlen($clientConfigId)) {
-            throw new ApiException('clientConfigId must be a non-empty string');
-        }
-        $this->clientConfigId = $clientConfigId;
-    }
+	public function __construct($clientConfigId, ClientConfigInterface $clientConfig, StorageInterface $tokenStorage, HttpClientInterface $httpClient) {
+		$this->setClientConfigId($clientConfigId);
+		$this->setClientConfig($clientConfig);
+		$this->setTokenStorage($tokenStorage);
+		$this->setHttpClient($httpClient);
+	}
 
-    public function setClientConfig(ClientConfigInterface $clientConfig)
-    {
-        $this->clientConfig = $clientConfig;
-    }
+	public function setClientConfigId($clientConfigId) {
+		if (!is_string($clientConfigId) || 0 >= strlen($clientConfigId)) {
+			throw new ApiException('clientConfigId must be a non-empty string');
+		}
+		$this->clientConfigId = $clientConfigId;
+	}
 
-    public function setTokenStorage(StorageInterface $tokenStorage)
-    {
-        $this->tokenStorage = $tokenStorage;
-    }
+	public function setClientConfig(ClientConfigInterface $clientConfig) {
+		$this->clientConfig = $clientConfig;
+	}
 
-    public function setHttpClient(HttpClientInterface $httpClient)
-    {
-        $this->httpClient = $httpClient;
-    }
+	public function setTokenStorage(StorageInterface $tokenStorage) {
+		$this->tokenStorage = $tokenStorage;
+	}
 
-    public function getRefreshToken(Context $context)
-    {
-        return $this->tokenStorage->getRefreshToken($this->clientConfigId, $context);
-    }
+	public function setHttpClient(HttpClientInterface $httpClient) {
+		$this->httpClient = $httpClient;
+	}
 
-    public function getAccessToken(Context $context)
-    {
-        // do we have a valid access token?
-        $accessToken = $this->tokenStorage->getAccessToken($this->clientConfigId, $context);
-		$invalid_token = true;
+	public function getRefreshToken(Context $context) {
+		return $this->tokenStorage->getRefreshToken($this->clientConfigId, $context);
+	}
 
-        if (false !== $accessToken) {
-            if (null === $accessToken->getExpiresIn()) {
-                // no expiry set, assume always valid
-                return $accessToken;
-            }
-            // check if expired
-            if (time() < $accessToken->getIssueTime() + $accessToken->getExpiresIn()) {
-                // not expired
-                return $accessToken;
-            }
-            // expired, delete it and continue
-            $this->tokenStorage->deleteAccessToken($accessToken);
-        }
+	public function getAccessToken(Context $context) {
+		// do we have a valid access token?
+		$accessToken = $this->tokenStorage->getAccessToken($this->clientConfigId, $context);
+		$invalid_token = false;
 
-        // no valid access token, is there a refresh_token?
-        $refreshToken = $this->getRefreshToken($context);
-        // no access token, and refresh token didn't work either or was not there, probably the tokens were revoked
-        //return false;
+		if (false !== $accessToken) {
+			if (null === $accessToken->getExpiresIn()) {
+				// no expiry set, assume always valid
+				return $accessToken;
+			}
+			// check if expired
+			if (time() < $accessToken->getIssueTime() + $accessToken->getExpiresIn()) {
+				// not expired
+				return $accessToken;
+			}
+			// expired, delete it and continue
+			//$this->tokenStorage->deleteAccessToken($accessToken);
+			$invalid_token = true;
+		}
+
+		// no valid access token, is there a refresh_token?
+		$refreshToken = $this->getRefreshToken($context);
+		// no access token, and refresh token didn't work either or was not there, probably the tokens were revoked
+		//return false;
 
 		if ($refreshToken !== false) {
 			// obtain a new access token with refresh token
@@ -102,49 +97,54 @@ class Api
 			$tokenResponse = $tokenRequest->withRefreshToken($refreshToken->getRefreshToken());
 
 			if (false !== $tokenResponse) {
-				// unable to fetch with RefreshToken, delete it
-				$this->tokenStorage->deleteRefreshToken($refreshToken);
-			}else {
 				$invalid_token = false;
+			} else {
+				//$this->tokenStorage->deleteRefreshToken($refreshToken);
+			}
+		}
+
+		if ($invalid_token === false && $tokenResponse) {
+
+			try {
+
+				if (null === $tokenResponse->getScope()) {
+					// no scope in response, we assume we got the requested scope
+					$scope = $context->getScope();
+				} else {
+					// the scope we got should be a superset of what we requested
+					$scope = $tokenResponse->getScope();
+					if (!$scope->hasScope($context->getScope())) {
+						// we didn't get the scope we requested, stop for now
+						// FIXME: we need to implement a way to request certain
+						// scope as being optional, while others need to be
+						// required
+						throw new ApiException('requested scope not obtained');
+					}
+				}
+			} catch (Exception $e) {
+				error_log('OAUTH ERROR: ' . $e->getMessage());
+				$invalid_token = true;
 			}
 		}
 
 		if ($invalid_token === true) {
 			$e = new InvalidTokenException(
-				'Token for user # "' . $context->getUserId() . '" is invalid or expired.',
-				null,
-				null,
-				$context->getUserId()
+				'Token for user # "' . $context->getUserId() . '" is invalid or expired.', null, null, $context->getUserId()
 			);
 
 			throw $e;
 		}
 
-		if (null === $tokenResponse->getScope()) {
-			// no scope in response, we assume we got the requested scope
-			$scope = $context->getScope();
-
-		} else {
-			// the scope we got should be a superset of what we requested
-			$scope = $tokenResponse->getScope();
-			if (!$scope->hasScope($context->getScope())) {
-				// we didn't get the scope we requested, stop for now
-				// FIXME: we need to implement a way to request certain
-				// scope as being optional, while others need to be
-				// required
-				throw new ApiException('requested scope not obtained');
-			}
-		}
 
 		$accessToken = new AccessToken(
 			array(
-				'client_config_id' => $this->clientConfigId,
-				'user_id' => $context->getUserId(),
-				'scope' => $scope,
-				'access_token' => $tokenResponse->getAccessToken(),
-				'token_type' => $tokenResponse->getTokenType(),
-				'issue_time' => time(),
-				'expires_in' => $tokenResponse->getExpiresIn(),
+			'client_config_id' => $this->clientConfigId,
+			'user_id' => $context->getUserId(),
+			'scope' => $scope,
+			'access_token' => $tokenResponse->getAccessToken(),
+			'token_type' => $tokenResponse->getTokenType(),
+			'issue_time' => time(),
+			'expires_in' => $tokenResponse->getExpiresIn(),
 			)
 		);
 
@@ -155,86 +155,84 @@ class Api
 			$this->tokenStorage->deleteRefreshToken($refreshToken);
 			$refreshToken = new RefreshToken(
 				array(
-					'client_config_id' => $this->clientConfigId,
-					'user_id' => $context->getUserId(),
-					'scope' => $scope,
-					'refresh_token' => $tokenResponse->getRefreshToken(),
-					'issue_time' => time(),
+				'client_config_id' => $this->clientConfigId,
+				'user_id' => $context->getUserId(),
+				'scope' => $scope,
+				'refresh_token' => $tokenResponse->getRefreshToken(),
+				'issue_time' => time(),
 				)
 			);
 			$this->tokenStorage->storeRefreshToken($refreshToken);
 		}
 
 		return $accessToken;
-    }
+	}
 
-    public function deleteAccessToken(Context $context)
-    {
-        $accessToken = $this->getAccessToken($context);
-        if (false !== $accessToken) {
-            $this->tokenStorage->deleteAccessToken($accessToken);
-        }
-    }
+	public function deleteAccessToken(Context $context) {
+		$accessToken = $this->getAccessToken($context);
+		if (false !== $accessToken) {
+			$this->tokenStorage->deleteAccessToken($accessToken);
+		}
+	}
 
-    public function deleteRefreshToken(Context $context)
-    {
-        $refreshToken = $this->getRefreshToken($context);
-        if (false !== $refreshToken) {
-            $this->tokenStorage->deleteRefreshToken($refreshToken);
-        }
-    }
+	public function deleteRefreshToken(Context $context) {
+		$refreshToken = $this->getRefreshToken($context);
+		if (false !== $refreshToken) {
+			$this->tokenStorage->deleteRefreshToken($refreshToken);
+		}
+	}
 
-    public function getAuthorizeUri(Context $context, $stateValue = null)
-    {
-        // allow caller to override a random generated state
-        // FIXME: is this actually used anywhere?
-        if (null === $stateValue) {
-            $stateValue = bin2hex(openssl_random_pseudo_bytes(self::RANDOM_LENGTH));
-        } else {
-            if (!is_string($stateValue) || 0 >= strlen($stateValue)) {
-                throw new ApiException('state must be a non-empty string');
-            }
-        }
+	public function getAuthorizeUri(Context $context, $stateValue = null) {
+		// allow caller to override a random generated state
+		// FIXME: is this actually used anywhere?
+		if (null === $stateValue) {
+			$stateValue = bin2hex(openssl_random_pseudo_bytes(self::RANDOM_LENGTH));
+		} else {
+			if (!is_string($stateValue) || 0 >= strlen($stateValue)) {
+				throw new ApiException('state must be a non-empty string');
+			}
+		}
 
-        // try to get a new access token
-        $this->tokenStorage->deleteStateForContext($this->clientConfigId, $context);
-        $state = new State(
-            array(
-                'client_config_id' => $this->clientConfigId,
-                'user_id' => $context->getUserId(),
-                'scope' => $context->getScope(),
-                'issue_time' => time(),
-                'state' => $stateValue,
-            )
-        );
-        if (false === $this->tokenStorage->storeState($state)) {
-            throw new ApiException('unable to store state');
-        }
+		// try to get a new access token
+		$this->tokenStorage->deleteStateForContext($this->clientConfigId, $context);
+		$state = new State(
+			array(
+			'client_config_id' => $this->clientConfigId,
+			'user_id' => $context->getUserId(),
+			'scope' => $context->getScope(),
+			'issue_time' => time(),
+			'state' => $stateValue,
+			)
+		);
+		if (false === $this->tokenStorage->storeState($state)) {
+			throw new ApiException('unable to store state');
+		}
 
-        $q = array(
-            'client_id' => $this->clientConfig->getClientId(),
-            'response_type' => 'code',
-            'state' => $state->getState(),
-        );
+		$q = array(
+			'client_id' => $this->clientConfig->getClientId(),
+			'response_type' => 'code',
+			'state' => $state->getState(),
+		);
 
-        // scope
-        $contextScope = $context->getScope();
-        if (!$contextScope->isEmpty()) {
-            if ($this->clientConfig->getUseCommaSeparatedScope()) {
-                $q['scope'] = $contextScope->toString(',');
-            } else {
-                $q['scope'] = $contextScope->toString();
-            }
-        }
+		// scope
+		$contextScope = $context->getScope();
+		if (!$contextScope->isEmpty()) {
+			if ($this->clientConfig->getUseCommaSeparatedScope()) {
+				$q['scope'] = $contextScope->toString(',');
+			} else {
+				$q['scope'] = $contextScope->toString();
+			}
+		}
 
-        // redirect_uri
-        if ($this->clientConfig->getRedirectUri()) {
-            $q['redirect_uri'] = $this->clientConfig->getRedirectUri();
-        }
+		// redirect_uri
+		if ($this->clientConfig->getRedirectUri()) {
+			$q['redirect_uri'] = $this->clientConfig->getRedirectUri();
+		}
 
-        $separator = (false === strpos($this->clientConfig->getAuthorizeEndpoint(), '?')) ? '?' : '&';
-        $authorizeUri = $this->clientConfig->getAuthorizeEndpoint().$separator.http_build_query($q, null, '&');
+		$separator = (false === strpos($this->clientConfig->getAuthorizeEndpoint(), '?')) ? '?' : '&';
+		$authorizeUri = $this->clientConfig->getAuthorizeEndpoint() . $separator . http_build_query($q, null, '&');
 
-        return $authorizeUri;
-    }
+		return $authorizeUri;
+	}
+
 }

@@ -2,3 +2,4 @@
 /phpunit.xml
 /example/*/vendor
 /example/*/composer.lock
+/nbproject/
