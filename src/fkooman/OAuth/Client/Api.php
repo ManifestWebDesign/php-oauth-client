@@ -97,14 +97,14 @@ class Api {
 			$tokenRequest = new TokenRequest($this->httpClient, $this->clientConfig);
 			$tokenResponse = $tokenRequest->withRefreshToken($refreshToken->getRefreshToken());
 
-			if (method_exists($tokenResponse, 'getScope')) {
+			if ($tokenResponse && method_exists($tokenResponse, 'getScope')) {
 				$invalid_token = false;
 			} else {
 				//$this->tokenStorage->deleteRefreshToken($refreshToken);
 			}
 		}
 
-		if ($invalid_token === false && $tokenResponse) {
+		if ($invalid_token === false && !empty($tokenResponse)) {
 
 			try {
 
